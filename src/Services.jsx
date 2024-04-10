@@ -233,7 +233,7 @@ export const Services = () => {
                 }
               />
 
-              <Box sx={{ minWidth: 120, margin: 1 }} style={{}}>
+              <Box sx={{ minWidth: '100%', margin: 1 }} style={{}}>
                 <FormControl fullWidth>
                   <InputLabel id="demo-simple-select-label">Estado</InputLabel>
                   <Select
@@ -241,6 +241,7 @@ export const Services = () => {
                     id="demo-simple-select"
                     value={formik.values.status}
                     label="Estado"
+                    style={{width: '200px'}}
                     onChange={(value) => {
                       console.log(value.target.value);
                       formik.setFieldValue("status", value.target.value);
