@@ -1,0 +1,49 @@
+{
+  "name": "appnailsreact",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.15.12",
+    "@mui/material": "^5.15.12",
+    "@mui/x-data-grid": "^6.19.6",
+    "@mui/x-date-pickers": "^6.19.6",
+    "@mui/x-date-pickers-pro": "^6.19.6",
+    "apexcharts": "^3.47.0",
+    "axios": "1.6.5",
+    "date-fns": "^3.3.1",
+    "formik": "2.4.5",
+    "moment": "^2.29.4",
+    "react": "^18.2.0",
+    "react-apexcharts": "^1.4.1",
+    "react-big-calendar": "^1.3.2",
+    "react-date-range": "^2.0.0-alpha.4",
+    "react-datetime-picker": "^5.6.0",
+    "react-dom": "^18.2.0",
+    "react-error-boundary": "4.0.11",
+    "react-icons": "4.11.0",
+    "react-router-dom": "6.17.0",
+    "react-toastify": "9.1.3",
+    "sweetalert2": "^11.10.6",
+    "vite-plugin-pwa": "^0.19.2",
+    "yup": "1.3.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.56",
+    "@types/react-dom": "^18.2.19",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "vite": "^5.1.4"
+  }
+}

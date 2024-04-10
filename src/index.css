@@ -1,0 +1,55 @@
+.rbc-event {
+  background: #ee99c9;
+  padding: 10px;
+  min-height: 5% !important;
+}
+
+.rbc-toolbar {
+  flex-direction: column !important;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.rbc-btn-group {
+  display: flex;
+  justify-content: center;
+  width: 99% !important;
+  order: 1 !important;
+}
+.rbc-active {
+  background: #ee99c9 !important;
+  /* padding: 10px; */
+}
+
+.rbc-day-bg {
+  background: white;
+  /* padding: 40px; */
+}
+
+.rbc-today {
+  background-color: #ffedff !important;
+}
+
+.css-13r4j3i .MuiTextField-root {
+  width: 100% !important;
+}
+
+/* Remove weekends in month view */
+/* .rbc-month-header > :first-child,
+.rbc-month-header > :last-child {
+  display: none;
+}
+
+.rbc-row-segment {
+  flex-basis: 20% !important;
+  max-width: 20% !important;
+}
+
+.rbc-month-row > .rbc-row-bg > :first-child,
+.rbc-month-row > .rbc-row-bg > :last-child {
+  display: none;
+}
+
+.rbc-row-content > .rbc-row > .rbc-date-cell:first-child,
+.rbc-row-content > .rbc-row > .rbc-date-cell:last-child {
+  display: none;
+} */
