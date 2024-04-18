@@ -385,9 +385,9 @@ export const Services = () => {
                           alt="Cindy Baker"
                           src={
                             "https://api.divisione.es/uploads/" +
-                            (row.user === "xymind0516@gmail.com"
+                            row.user === "xymind0516@gmail.com"
                               ? "alex_d03ec5afa9.jpeg"
-                              : "1695319530128_581739228e.jpg")
+                              : row.user === "cristina@gmail.com" ? "1695319530128_581739228e.jpg": ""
                           }
                         />
                       </Typography>
@@ -451,7 +451,7 @@ export const Services = () => {
                             "https://api.divisione.es/uploads/" +
                             (row.user === "xymind0516@gmail.com"
                               ? "alex_d03ec5afa9.jpeg"
-                              : "1695319530128_581739228e.jpg")
+                              : row.user === "cristina@gmail.com" ? "1695319530128_581739228e.jpg" : "")
                           }
                         />
                       </Typography>
@@ -507,7 +507,6 @@ export const Services = () => {
                         color="text.secondary"
                         gutterBottom
                       >
-                        {/* ${row.user === "xymind0516@gmail.com" ? "de/xymind0516" : row.user === "cristina@gmail.com" ? "de/cristina" : "predeterminada"}.jpeg`} */}
 
                         <Avatar
                           alt="Cindy Baker"
@@ -515,7 +514,7 @@ export const Services = () => {
                             "https://api.divisione.es/uploads/" +
                             (row.user === "xymind0516@gmail.com"
                               ? "alex_d03ec5afa9.jpeg"
-                              : "1695319530128_581739228e.jpg")
+                              : row.user === "cristina@gmail.com" ? "1695319530128_581739228e.jpg" : "")
                           }
                         />
                       </Typography>
