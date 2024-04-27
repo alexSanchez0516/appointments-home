@@ -102,8 +102,8 @@ const MonthEvent = ({ event }) => {
 export const CalendarApp = () => {
   const [open, setOpen] = useState(false);
   const today = dayjs();
-  const tenAM = today.set("hour", 10).set("minute", 0).toDate();
-  const nineThirtyPM = today.set("hour", 21).set("minute", 30).toDate();
+  const tenAM = today.set("hour", 6).set("minute", 0).toDate();
+  const nineThirtyPM = today.set("hour", 23).set("minute", 30).toDate();
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [services] = useState([]);
   const [date, setDate] = useState(moment().toDate());
