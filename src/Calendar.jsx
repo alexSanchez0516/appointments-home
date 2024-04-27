@@ -766,12 +766,12 @@ export const CalendarApp = () => {
             {formik.values.id
               ? `${
                   formik.values.type === TYPES_EVENT.EVENTO_PERSONAL
-                    ? "Evento Personal"
+                    ? "Evento"
                     : "Cita"
                 } `
               : `Crear ${
                   formik.values.type === TYPES_EVENT.EVENTO_PERSONAL
-                    ? "Evento Personal"
+                    ? "Evento"
                     : "Cita"
                 } `}
           </Typography>
