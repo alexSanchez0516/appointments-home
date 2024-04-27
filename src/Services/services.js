@@ -3,16 +3,15 @@ import { API_URL } from "../constants/contants";
 
 export const deleteAppointment = async (id) => {
   try {
-    return await axios.delete(`${API_URL}/appointments-nails/${id}`);
+    return await axios.delete(`${API_URL}/evets/${id}`);
   } catch (error) {
     console.error(`Error al eliminar la cita:`, error);
   }
 };
 
-
 export const updateAppointment = async (id, updatedData) => {
   try {
-    return await axios.put(`${API_URL}/appointments-nails/${id}`, {
+    return await axios.put(`${API_URL}/evets/${id}`, {
       data: updatedData,
     });
   } catch (error) {
@@ -20,11 +19,9 @@ export const updateAppointment = async (id, updatedData) => {
   }
 };
 
-
-
 export const createAppointment = async (data) => {
   try {
-    return await axios.post(`${API_URL}/appointments-nails`, {
+    return await axios.post(`${API_URL}/evets`, {
       data,
     });
   } catch (error) {
@@ -32,17 +29,44 @@ export const createAppointment = async (data) => {
   }
 };
 
-export const getAppointmentsData = async (user = null, page = 0) => {
+export const createAppointmentRecurrent = async (data) => {
+  try {
+    return await axios.post(`${API_URL}/relation-events`, {
+      data,
+    });
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+export const getAppointmentRecurrent = async (data) => {
+  try {
+    return await axios.get(`${API_URL}/events-recurrents`, {
+      data,
+    });
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+export const getAppointmentsData = async (
+  user = null,
+  page = 0,
+  eventRecurrentID = null
+) => {
   const pageSize = 25;
-  let url = `${API_URL}/appointments-nails?populate=*`
-  if (user !== null && user!== undefined && user!== "" && user!== "Todos") { 
+  let url = `${API_URL}/evets?populate=*`;
+  if (user !== null && user !== undefined && user !== "" && user !== "Todos") {
     url += `&filters[user][$eq]=${user}`;
   }
-  url += `&pagination[page]=${page}&pagination[pageSize]=${pageSize}`
+  if (
+    eventRecurrentID
+  ) {
+    url += `&filters[events_recurrent_id][$eq]=${eventRecurrentID}`;
+  }
+  url += `&pagination[page]=${page}&pagination[pageSize]=${pageSize}`;
   try {
-    return await axios.get(
-   url
-    );
+    return await axios.get(url);
   } catch (error) {
     console.error(error);
   }

@@ -24,9 +24,14 @@ import SaveIcon from "@mui/icons-material/Save";
 import {
   Autocomplete,
   Button,
+  Checkbox,
+  Chip,
   FormControl,
+  FormControlLabel,
+  FormGroup,
   InputLabel,
   MenuItem,
+  OutlinedInput,
   Select,
   TextField,
   Typography,
@@ -48,11 +53,19 @@ import Swal from "sweetalert2";
 import { MenuBarExpo } from "./Components/DataGrid/Menu/Menu";
 import {
   createAppointment,
+  createAppointmentRecurrent,
   deleteAppointment,
   getAppointmentsData,
-  updateAppointment
+  updateAppointment,
 } from "./Services/services";
-import { STATUS_APPOINTMENTS, TYPES_EVENT, USERS } from "./constants/contants";
+import {
+  DAYS_RECURRENTS,
+  STATUS_APPOINTMENTS,
+  TYPES_EVENT,
+  TYPES_RECURRENTS,
+  USERS,
+  daysOfWeek,
+} from "./constants/contants";
 // Add utc and timezone plugins to dayjs
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -62,7 +75,6 @@ dayjs.tz.setDefault("Europe/Madrid");
 moment.locale("es");
 dayjs.locale("es");
 const localizer = momentLocalizer(moment);
-
 const style = {
   position: "absolute",
   top: "50%",
@@ -93,8 +105,8 @@ export const CalendarApp = () => {
   const tenAM = today.set("hour", 10).set("minute", 0).toDate();
   const nineThirtyPM = today.set("hour", 21).set("minute", 30).toDate();
   const [calendarEvents, setCalendarEvents] = useState([]);
-  const [services, setServices] = useState([]);
-  const [date, setDate] = useState(dayjs().toDate());
+  const [services] = useState([]);
+  const [date, setDate] = useState(moment().toDate());
   const [namePatientsList, setNamePatientsList] = useState([]);
   const user = localStorage.getItem("user");
   const [loadingEvents, setLoadingEvents] = useState(true);
@@ -120,6 +132,10 @@ export const CalendarApp = () => {
     observations: "",
     services_nails: [],
     colour: "#ee99c9",
+    recurrent: false,
+    events_recurrent: null, //id
+    recurrent_type: null,
+    diasSeleccionados: [], // Inicializado como un arreglo vacío
   };
 
   /**
@@ -141,6 +157,10 @@ export const CalendarApp = () => {
     formik.setFieldValue("observations", event.observations);
     formik.setFieldValue("status", event.status);
     formik.setFieldValue("colour", event.colour ?? "#ee99c9");
+    formik.setFieldValue(
+      "events_recurrent",
+      event.events_recurrent ?? "#ee99c9"
+    );
 
     handleOpen();
   };
@@ -149,8 +169,10 @@ export const CalendarApp = () => {
    * Delete event by id
    * @param {*} id
    */
-  const deleteEvent = (id) => {
-    Swal.fire({
+  const deleteEvent = async (id) => {
+    console.log({ forikValues: formik.values });
+
+    const configPopUp = {
       title: "¿Estás segur@ de eliminar la cita?",
       showCancelButton: true,
       confirmButtonText: "Eliminar",
@@ -158,7 +180,13 @@ export const CalendarApp = () => {
       icon: "warning",
       confirmButtonColor: "#ee99c9",
       cancelButtonColor: "red",
-    }).then((result) => {
+    };
+    if (formik.values.events_recurrent?.data?.id) {
+      configPopUp.showDenyButton = true;
+      configPopUp.denyButtonText = "Eliminar todos";
+    }
+
+    Swal.fire(configPopUp).then(async (result) => {
       if (result.isConfirmed) {
         deleteAppointment(id)
           .then(() => {
@@ -168,45 +196,118 @@ export const CalendarApp = () => {
           .catch(() => {
             toast.error("Ups, hubo un error, contacta con el programador");
           });
+      } else if (result.isDenied && formik.values.events_recurrent?.data?.id) {
+        const appointmentRecurentByID = await getAppointDataFullPaginate();
+
+        toast
+          .promise(
+            Promise.all(
+              appointmentRecurentByID.map((appointment) =>
+                deleteAppointment(appointment.id)
+              )
+            ),
+            {
+              pending: "Eliminando citas recurrentes...",
+              success:
+                "Todas las citas/eventos recurrentes eliminados correctamente 👌",
+              error: "Error al eliminar citas recurrentes 🤯",
+            }
+          )
+          .then(() => {
+            getAppointments(); // Actualiza la lista de citas después de la eliminación exitosa
+          })
+          .catch((error) => {
+            console.error(error);
+          });
       }
     });
   };
 
-  /**
-   * check values min for submit
-   * @param {*} values formik
-   * @returns boolean
-   */
-  const checkDataFormValues = (values) => {
-    return (
-      !values.namePatient ||
-      (values.type !== TYPES_EVENT.EVENTO_PERSONAL &&
-        values.services_nails.length === 0) ||
-      !values.datetime_init ||
-      !values.datetime_end
-    );
-  };
+  const createRecurrentAppointments = async (
+    requestData,
+    recurrentType,
+    diasSeleccionados
+  ) => {
+    try {
+      const yearStart = dayjs().startOf("year");
+      const yearEnd = dayjs().endOf("year");
+      let currentDate = yearStart;
 
+      const formikHourStart = dayjs(requestData.datetime_init).hour();
+      const formikMinuteStart = dayjs(requestData.datetime_init).minute();
+      const formikHourEnd = dayjs(requestData.datetime_end).hour();
+      const formikMinuteEnd = dayjs(requestData.datetime_end).minute();
+
+      const getNextDayOfWeek = (date, dayOfWeek) => {
+        let resultDate = dayjs(date).day(dayOfWeek);
+        if (resultDate.isBefore(date)) resultDate = resultDate.add(1, "week");
+        return resultDate;
+      };
+
+      while (currentDate.isBefore(yearEnd)) {
+        if (
+          recurrentType === "Diario" ||
+          recurrentType === "Semanal" ||
+          recurrentType === "Mensual"
+        ) {
+          for (const dia of diasSeleccionados) {
+            // Cambiado a bucle for...of
+            let nextDate =
+              recurrentType === "Diario"
+                ? currentDate
+                : getNextDayOfWeek(currentDate, daysOfWeek[dia]);
+
+            if (
+              dayjs(nextDate).isBefore(yearEnd) &&
+              dayjs(nextDate).isAfter(yearStart)
+            ) {
+              let adjustedStartDate = dayjs(nextDate)
+                .hour(formikHourStart)
+                .minute(formikMinuteStart)
+                .toISOString();
+              let adjustedEndDate = dayjs(nextDate)
+                .hour(formikHourEnd)
+                .minute(formikMinuteEnd)
+                .toISOString();
+
+              let newRequestData = {
+                ...requestData,
+                datetime_init: adjustedStartDate,
+                datetime_end: adjustedEndDate,
+              };
+
+              // Crea la cita con las fechas ajustadas
+              await createAppointment(newRequestData);
+            }
+          }
+
+          // Avanza al siguiente periodo según el tipo de recurrencia
+          if (recurrentType === "Diario") {
+            currentDate = currentDate.add(1, "day");
+          } else if (recurrentType === "Semanal") {
+            currentDate = currentDate.add(1, "week");
+          } else if (recurrentType === "Mensual") {
+            currentDate = currentDate.add(1, "month");
+          }
+        }
+      }
+    } catch (error) {
+      console.log({ error });
+      throw error; // Asegúrate de propagar el error para manejarlo más arriba si es necesario
+    }
+  };
   /**
    *
    * @param {*} values formik
    * @returns
    */
   const onSubmit = (values) => {
-    if (checkDataFormValues(values)) {
-      toast.error("Faltan campos por rellenar");
-      return;
-    }
+    console.log({ values });
 
     // Verifica que las fechas tengan el formato correcto
     const formattedDatetimeInit = dayjs(values.datetime_init).toISOString();
     const formattedDatetimeEnd = dayjs(values.datetime_end).toISOString();
 
-    // Verifica que cada servicio tenga un ID antes de mapear
-    const validServicesNails = values.services_nails.filter(
-      (service) => service.id
-    );
-    const serviceIds = validServicesNails.map((service) => service.id);
     // Crea la solicitud con los datos formateados
     const requestData = {
       namePatient: values.namePatient,
@@ -216,10 +317,12 @@ export const CalendarApp = () => {
       user: JSON.parse(user).email,
       tel: values.tel,
       type: values.type,
-      services_nails: serviceIds,
+      services_nails: [],
       status: values.status,
       observations: values.observations,
       colour: values.colour,
+      events_recurrent: values?.events_recurrent,
+      events_recurrent_id: values?.events_recurrent,
     };
 
     // Define la función para manejar el éxito de la solicitud
@@ -229,35 +332,124 @@ export const CalendarApp = () => {
         : "Evento creada correctamente";
 
       toast.success(successMessage);
-      getAppointments();
       handleClose();
       formik.resetForm();
     };
 
-    const datetimeStartDayjs = dayjs(formik.values.datetime_init);
-    const datetimeEndDayjs = dayjs(formik.values.datetime_end);
+    if (!values.id) {
+      if (values.recurrent_type && values.recurrent) {
+        createAppointmentRecurrent({
+          data: {
+            type: values.recurrent_type,
+          },
+        }).then(async (response) => {
+          requestData.events_recurrent = response.data.data.id;
+          requestData.events_recurrent_id = response.data.data.id;
+          try {
+            toast
+              .promise(
+                createRecurrentAppointments(
+                  requestData,
+                  values.recurrent_type,
+                  formik.values.diasSeleccionados
+                ),
+                {
+                  pending: "Creando citas recurrentes...",
+                  success: "Citas recurrentes creadas correctamente 👌",
+                  error: "Error al crear citas recurrentes 🤯",
+                }
+              )
+              .then(() => {
+                getAppointments();
+                handleClose();
+                formik.resetForm();
+              })
+              .catch((error) => {
+                console.error(error);
+              });
+          } catch (error) {
+            toast.error(
+              "Error en la solicitud[HAZ CAPTURA]",
+              JSON.stringify(error)
+            );
+          }
+        });
+      } else {
+        createAppointment(requestData)
+          .then(() => {
+            handleSuccess();
+          })
+          .catch((error) => {
+            toast.error(
+              "Error en la solicitud[HAZ CAPTURA]",
+              JSON.stringify(error)
+            );
+          });
+      }
+    } else {
+      const configPopUp = {
+        title: "¿Que deseas actualizar?",
+        showCancelButton: true,
+        confirmButtonText: "Actualizar la actual",
+        cancelButtonText: "Cancelar",
+        icon: "warning",
+        confirmButtonColor: "#ee99c9",
+        cancelButtonColor: "red",
+        showDenyButton: true,
+        denyButtonText: "Actualizar todas",
+      };
+      handleClose();
 
-    // Check if both datetimes are before 9:30 PM (21:30)
-    if (
-      !(
-        datetimeStartDayjs.hour() < 21 ||
-        (datetimeStartDayjs.hour() === 21 &&
-          datetimeStartDayjs.minute() < 30) ||
-        datetimeEndDayjs.hour() < 21 ||
-        (datetimeEndDayjs.hour() === 21 && datetimeEndDayjs.minute() < 30)
-      )
-    ) {
-      toast.error("La fecha Inicial/final no esta en tu horario de trabajo");
-      return;
+      Swal.fire(configPopUp).then(async (result) => {
+        if (result.isConfirmed) {
+          updateAppointment(values.id, requestData)
+            .then(() => {
+              handleSuccess();
+            })
+            .catch((error) => {
+              toast.error(
+                "Error en la solicitud[HAZ CAPTURA]",
+                JSON.stringify(error)
+              );
+            });
+        } else if (
+          result.isDenied &&
+          formik.values.events_recurrent?.data?.id
+        ) {
+          const appointmentRecurentByID = await getAppointDataFullPaginate();
+          requestData.events_recurrent_id =
+            formik.values.events_recurrent?.data?.id;
+
+          toast
+            .promise(
+              Promise.all(
+                appointmentRecurentByID.map((appointment) => {
+                  // Utiliza directamente la fecha y hora originales de cada cita
+                  const updatedRequestData = {
+                    ...requestData,
+                    datetime_init: appointment.datetime_init, // Usa la fecha/hora de inicio original
+                    datetime_end: appointment.datetime_end, // Usa la fecha/hora de fin original
+                  };
+                  // Llama a updateAppointment con el ID de la cita y los datos originales
+                  return updateAppointment(appointment.id, updatedRequestData);
+                })
+              ),
+              {
+                pending: "Actualizando citas recurrentes...",
+                success:
+                  "Todas las citas/eventos recurrentes actualizados correctamente 👌",
+                error: "Error al actualizar citas recurrentes 🤯",
+              }
+            )
+            .then(() => {
+              getAppointments(); // Actualiza la lista de citas después de la actualización exitosa
+            })
+            .catch((error) => {
+              console.error(error);
+            });
+        }
+      });
     }
-
-    const appointmentPromise = values.id
-      ? updateAppointment(values.id, requestData)
-      : createAppointment(requestData);
-
-    appointmentPromise.then(handleSuccess).catch((error) => {
-      toast.error("Error en la solicitud[HAZ CAPTURA]", JSON.stringify(error));
-    });
   };
 
   const formik = useFormik({
@@ -269,8 +461,28 @@ export const CalendarApp = () => {
 
   useEffect(() => {
     getAppointments();
-
   }, []);
+
+  const getAppointDataFullPaginate = async () => {
+    const response = await getAppointmentsData(selectAppointmetsUser);
+    const totalPages = response.data.meta.pagination.pageCount;
+    // Llama a la función para obtener todos los datos de las páginas restantes
+    const additionalData = await fetchAdditionalPages(
+      totalPages,
+      formik.values.events_recurrent?.data?.id
+    );
+
+    // Combina todos los datos en un solo array
+    const allAppointments = response.data.data.concat(
+      ...additionalData.map((response) => response.data.data)
+    );
+    const filtrados = allAppointments.filter((elm) =>
+      elm.attributes.user.includes("gmail")
+    );
+    const uniqueAppointments = removeDuplicates(filtrados);
+
+    return uniqueAppointments;
+  };
 
   /**
    * Get data appointments events
@@ -282,51 +494,51 @@ export const CalendarApp = () => {
         const totalPages = response.data.meta.pagination.pageCount;
         // Llama a la función para obtener todos los datos de las páginas restantes
         const additionalData = await fetchAdditionalPages(totalPages);
-        // console.log({additionalData});
 
         // Combina todos los datos en un solo array
         const allAppointments = response.data.data.concat(
-          ...additionalData
-           
-            .map((response) => response.data.data)
+          ...additionalData.map((response) => response.data.data)
         );
-        const filtrados = allAppointments.filter((elm) => elm.attributes.user.includes("gmail"))
+        const filtrados = allAppointments.filter((elm) =>
+          elm.attributes.user.includes("gmail")
+        );
         const uniqueAppointments = removeDuplicates(filtrados);
 
-        const mappedAppointments = uniqueAppointments
-          .map((appointment) => {
-            const { id, attributes } = appointment;
-            const {
-              namePatient,
-              datetime_init,
-              datetime_end,
-              services_nails,
-              tel,
-              observations,
-              type,
-              colour,
-              status,
-            } = attributes;
+        const mappedAppointments = uniqueAppointments.map((appointment) => {
+          const { id, attributes } = appointment;
+          const {
+            namePatient,
+            datetime_init,
+            datetime_end,
+            services_nails,
+            tel,
+            observations,
+            type,
+            colour,
+            status,
+            events_recurrent,
+          } = attributes;
 
-            // Calcula la suma de los precios de todos los servicios
-            const totalPrice = services_nails.data.reduce((sum, service) => {
-              return sum + service.attributes.price;
-            }, 0);
+          // Calcula la suma de los precios de todos los servicios
+          const totalPrice = services_nails.data.reduce((sum, service) => {
+            return sum + service.attributes.price;
+          }, 0);
 
-            return {
-              id,
-              namePatient,
-              price: totalPrice,
-              datetime_init,
-              datetime_end,
-              services: services_nails,
-              tel: tel ?? null,
-              observations,
-              type,
-              colour,
-              status,
-            };
-          });
+          return {
+            id,
+            namePatient,
+            price: totalPrice,
+            datetime_init,
+            datetime_end,
+            services: services_nails,
+            tel: tel ?? null,
+            observations,
+            type,
+            colour,
+            status,
+            events_recurrent,
+          };
+        });
 
         const patiendsMapp = mappedAppointments.reduce((acc, cita) => {
           const exists = acc.some(
@@ -345,7 +557,6 @@ export const CalendarApp = () => {
         setNamePatientsList(patiendsMapp);
 
         const calendarEvents = mappedAppointments.map((appointment) => {
-          
           const {
             datetime_init,
             datetime_end,
@@ -358,6 +569,7 @@ export const CalendarApp = () => {
             colour,
             type,
             status,
+            events_recurrent,
           } = appointment;
           const start = dayjs(datetime_init).toDate();
           const end = dayjs(datetime_end).toDate();
@@ -370,6 +582,7 @@ export const CalendarApp = () => {
             observations,
             type,
             colour,
+            events_recurrent,
             status,
             data: {
               x: price,
@@ -409,13 +622,23 @@ export const CalendarApp = () => {
    * @param {*} totalPages
    * @returns
    */
-  const fetchAdditionalPages = async (totalPages) => {
+  const fetchAdditionalPages = async (totalPages, recurrent_id = null) => {
     const additionalDataPromises = [];
 
     for (let i = 1; i <= totalPages; i++) {
-      additionalDataPromises.push(
-        getAppointmentsData(selectAppointmetsUser, i)
-      );
+      if (recurrent_id) {
+        additionalDataPromises.push(
+          getAppointmentsData(
+            selectAppointmetsUser,
+            i,
+            formik.values.events_recurrent?.data?.id
+          )
+        );
+      } else {
+        additionalDataPromises.push(
+          getAppointmentsData(selectAppointmetsUser, i)
+        );
+      }
     }
 
     return Promise.all(additionalDataPromises);
@@ -423,68 +646,19 @@ export const CalendarApp = () => {
 
   useEffect(() => {
     getAppointments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectAppointmetsUser]);
 
-  /**
-   *
-   * @param {*} duration
-   * @returns
-   */
-  const convertDurationInMinutes = (duration) => {
-    const partes = duration.split(" ");
-
-    let totalMin = 0;
-
-    for (const parte of partes) {
-      if (parte.includes("h")) {
-        totalMin += parseInt(parte) * 60;
-      } else if (parte.includes("m")) {
-        totalMin += parseInt(parte);
-      }
-    }
-
-    return totalMin;
-  };
-
   useEffect(() => {
-    if (
-      formik.values.datetime_init &&
-      formik.values.services_nails.length > 0
-    ) {
-      const durationInMinutes = formik.values.services_nails.map((servicio) =>
-        convertDurationInMinutes(servicio.duration)
-      );
-      const sumTotalMin = durationInMinutes.reduce(
-        (total, duracion) => total + duracion,
-        0
-      );
-
-      const datetimeInitDayjs = dayjs(formik.values.datetime_init);
-      const nuevoDatetimeEnd = datetimeInitDayjs.add(sumTotalMin, "minute");
-
-      // Check if both datetimes are before 9:30 PM (21:30)
-      if (
-        !(
-          datetimeInitDayjs.hour() < 21 ||
-          (datetimeInitDayjs.hour() === 21 &&
-            datetimeInitDayjs.minute() < 30) ||
-          datetimeInitDayjs.hour() < 21 ||
-          (datetimeInitDayjs.hour() === 21 && datetimeInitDayjs.minute() < 30)
-        )
-      ) {
-        toast.error("La fecha Inicial/final no esta en tu horario de trabajo");
-      }
-      formik.setFieldValue("datetime_end", nuevoDatetimeEnd);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formik.values.services_nails, formik.values.datetime_init]);
+    formik.setFieldValue("diasSeleccionados", []);
+  }, [formik.values.recurrent_type]);
 
   /**
    * Select slot, and verify datetime
    */
-  const onSelectSlot = useCallback(() => {
+  const onSelectSlot = useCallback((slotInfo) => {
     formik.setFieldValue("type", TYPES_EVENT.EVENTO_PERSONAL).then(() => {
+      formik.setFieldValue("datetime_init", dayjs(slotInfo.start));
+      formik.setFieldValue("datetime_end", dayjs(slotInfo.end));
       handleOpen();
     });
   }, []);
@@ -534,14 +708,20 @@ export const CalendarApp = () => {
       >
         <Button
           variant="contained"
-          style={{ margin: ".5rem 1rem 1rem 0", backgroundColor: "#ee99c9" }}
+          style={{
+            margin: ".5rem 1rem 1rem 0",
+            backgroundColor: "rgb(147, 227, 253)",
+          }}
           onClick={handleOpenEvent}
         >
           <AddIcon />
         </Button>
         <Button
           variant="contained"
-          style={{ margin: ".5rem 1rem 1rem 0", backgroundColor: "#ee99c9" }}
+          style={{
+            margin: ".5rem 1rem 1rem 0",
+            backgroundColor: "rgb(147, 227, 253)",
+          }}
           onClick={() => {
             window.location.reload();
           }}
@@ -748,6 +928,117 @@ export const CalendarApp = () => {
                   )}
               </LocalizationProvider>
 
+              {!formik.values.id && (
+                <FormGroup>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={formik.values.recurrent || false}
+                        onChange={() =>
+                          formik.setFieldValue(
+                            "recurrent",
+                            !formik.values.recurrent
+                          )
+                        }
+                        defaultChecked={formik.values.recurrent}
+                      />
+                    }
+                    label="¿Recurrente?"
+                  />
+                </FormGroup>
+              )}
+
+              {formik.values.recurrent && !formik.values.id && (
+                <>
+                  <Box sx={{ minWidth: 120, margin: 1 }} style={{}}>
+                    <FormControl fullWidth>
+                      <InputLabel id="demo-simple-select-label">
+                        ¿Cada cuanto?
+                      </InputLabel>
+                      <Select
+                        labelId="demo-simple-select-label"
+                        id="demo-simple-select"
+                        value={formik.values.recurrent_type}
+                        label="¿Cada cuanto?"
+                        onChange={(value) => {
+                          console.log(value.target.value);
+                          formik.setFieldValue(
+                            "recurrent_type",
+                            value.target.value
+                          );
+                        }}
+                      >
+                        {TYPES_RECURRENTS.map((status, index) => {
+                          return (
+                            <MenuItem
+                              key={`status_item_id__recurrent${index}`}
+                              value={status}
+                            >
+                              {status}
+                            </MenuItem>
+                          );
+                        })}
+                      </Select>
+                    </FormControl>
+                  </Box>
+
+                  {formik.values.recurrent_type !== TYPES_RECURRENTS[0] &&
+                    !formik.values.id && (
+                      <Box sx={{ minWidth: 120, margin: 1 }} style={{}}>
+                        <FormControl fullWidth>
+                          <InputLabel id="demo-simple-select-label">
+                            ¿Qué días?
+                          </InputLabel>
+                          <Select
+                            labelId="demo-multiple-chip-label"
+                            id="demo-multiple-chip"
+                            multiple
+                            label="¿Qué días?"
+                            value={formik.values.diasSeleccionados ?? []} // Asegúrate de que esto sea un arreglo
+                            onChange={(event) => {
+                              const {
+                                target: { value },
+                              } = event;
+                              formik.setFieldValue(
+                                "diasSeleccionados",
+                                typeof value === "string"
+                                  ? value.split(",")
+                                  : value
+                              );
+                            }}
+                            input={
+                              <OutlinedInput
+                                id="select-multiple-chip"
+                                label="Chip"
+                              />
+                            }
+                            renderValue={(selected) => (
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  flexWrap: "wrap",
+                                  gap: 0.5,
+                                }}
+                              >
+                                {selected.map((value) => (
+                                  <Chip key={value} label={value} />
+                                ))}
+                              </Box>
+                            )}
+                            // MenuProps y otros props...
+                          >
+                            {DAYS_RECURRENTS.map((name) => (
+                              <MenuItem key={name} value={name}>
+                                {name}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    )}
+                </>
+              )}
+
               <Box sx={{ minWidth: 120, margin: 1 }} style={{}}>
                 <FormControl fullWidth>
                   <InputLabel id="demo-simple-select-label">Estado</InputLabel>
@@ -789,6 +1080,7 @@ export const CalendarApp = () => {
                   onChange={formik.handleChange}
                 />
               </div>
+
               <div style={{ display: "flex" }}>
                 {formik.values.id &&
                   selectAppointmetsUser === JSON.parse(user).email && (
@@ -820,7 +1112,7 @@ export const CalendarApp = () => {
                   <Button
                     style={{
                       margin: ".3rem 0 .3rem .5rem",
-                      backgroundColor: "#ee99c9",
+                      backgroundColor: "rgb(147, 227, 253)",
                     }}
                     variant="contained"
                     type="submit"
@@ -838,7 +1130,7 @@ export const CalendarApp = () => {
         <Calendar
           localizer={localizer}
           events={calendarEvents}
-          views={["month", "week", "day", "agenda", "work_week"]}
+          views={["month", "week", "day", "agenda"]}
           date={date}
           onNavigate={onNavigate}
           step={15}
@@ -881,10 +1173,7 @@ export const CalendarApp = () => {
               borderRadius: "0px",
               border: "none",
             };
-            console.log({event});
-            
             newStyle.backgroundColor = event?.colour;
-
             return {
               className: "",
               style: newStyle,

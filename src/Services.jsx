@@ -288,7 +288,7 @@ export const Services = () => {
                 <Button
                   style={{
                     margin: ".3rem 0 .3rem .5rem",
-                    backgroundColor: "#ee99c9",
+                    backgroundColor: "rgb(147, 227, 253)",
                   }}
                   variant="contained"
                   type="submit"
@@ -337,14 +337,14 @@ export const Services = () => {
       >
         <Button
           variant="contained"
-          style={{ margin: "1rem 1rem 1rem 0", backgroundColor: "#ee99c9" }}
+          style={{ margin: "1rem 1rem 1rem 0", backgroundColor: "rgb(147, 227, 253)" }}
           onClick={() => navigate("/citas")}
         >
           Volver
         </Button>
         <Button
           variant="contained"
-          style={{ margin: "1rem 1rem 1rem 0", backgroundColor: "#ee99c9" }}
+          style={{ margin: "1rem 1rem 1rem 0", backgroundColor: "rgb(147, 227, 253)" }}
           onClick={handleOpen}
         >
           <AddIcon />
