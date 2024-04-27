@@ -761,7 +761,7 @@ export const CalendarApp = () => {
         <Box sx={style}>
           <Typography
             variant="h4"
-            style={{ marginBottom: ".5rem", marginTop: ".5rem" }}
+            style={{ marginBottom: ".5rem" }}
           >
             {formik.values.id
               ? `${
