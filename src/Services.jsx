@@ -197,7 +197,6 @@ export const Services = () => {
                 flexFlow: "column wrap",
               }}
             >
-              {JSON.stringify(formik.values)}
               <TextField
                 fullWidth
                 style={{ width: "100%", marginBottom: "1rem" }}

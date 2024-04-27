@@ -377,7 +377,9 @@ export const CalendarApp = () => {
       } else {
         createAppointment(requestData)
           .then(() => {
+            getAppointments();
             handleSuccess();
+            formik.resetForm();
           })
           .catch((error) => {
             toast.error(
@@ -402,9 +404,13 @@ export const CalendarApp = () => {
 
       Swal.fire(configPopUp).then(async (result) => {
         if (result.isConfirmed) {
+          requestData.events_recurrent_id = requestData.events_recurrent.data.id;
           updateAppointment(values.id, requestData)
             .then(() => {
+              getAppointments();
               handleSuccess();
+              formik.resetForm();
+
             })
             .catch((error) => {
               toast.error(
@@ -442,6 +448,7 @@ export const CalendarApp = () => {
               }
             )
             .then(() => {
+              formik.resetForm();
               getAppointments(); // Actualiza la lista de citas después de la actualización exitosa
             })
             .catch((error) => {
