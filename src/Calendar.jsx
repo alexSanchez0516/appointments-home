@@ -865,10 +865,12 @@ export const CalendarApp = () => {
                 }
               />
 
+              <div style={{display: 'flex', gap: '.5rem'}}>
               <LocalizationProvider
                 dateAdapter={AdapterDayjs}
                 adapterLocale="es"
               >
+                <div style={{display: 'flex', flexDirection: 'column'}}>
                 <InputLabel
                   style={{ margin: ".3rem 0 .3rem .5rem" }}
                   id="demo-multiple-chip-label1123"
@@ -897,11 +899,15 @@ export const CalendarApp = () => {
                   Boolean(formik.errors.datetime_init) && (
                     <div>{formik.errors.datetime_init}</div>
                   )}
+                </div>
               </LocalizationProvider>
               <LocalizationProvider
                 dateAdapter={AdapterDayjs}
                 adapterLocale="es"
               >
+
+<div style={{display: 'flex', flexDirection: 'column'}}>
+
                 <InputLabel
                   style={{ margin: ".3rem 0 .3rem .5rem" }}
                   id="demo-multiple-chip-label11"
@@ -926,7 +932,9 @@ export const CalendarApp = () => {
                   Boolean(formik.errors.datetime_end) && (
                     <div>{formik.errors.datetime_end}</div>
                   )}
+</div>
               </LocalizationProvider>
+              </div>
 
               {!formik.values.id && (
                 <FormGroup>
