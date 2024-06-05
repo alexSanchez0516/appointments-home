@@ -1,4 +1,4 @@
-export const USERS = ["Todos","xymind0516@gmail.com", "cristina@gmail.com", "risi@gmail.com", "wini@gmail.com"];
+export const USERS = ["Todos", "xymind0516@gmail.com", "cristina@gmail.com", "risi@gmail.com", "wini@gmail.com", "jhon@gmail.com"];
 
 export const API_URL = "https://api.divisione.es/api";
 export const STATUS_APPOINTMENTS = [
